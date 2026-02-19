@@ -1,35 +1,1508 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Sakura Izakaya Online Shop</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyBoard — Your Personal Whiteboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500&family=Nunito:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #f8f7f2;
+    --grid-color: #c8d4e8;
+    --grid-strong: #b0c0d8;
+    --toolbar-bg: #1a1a2e;
+    --toolbar-accent: #16213e;
+    --panel-bg: #0f3460;
+    --btn-hover: #e94560;
+    --text-light: #e8eaf0;
+    --text-muted: #9aa5b8;
+    --accent: #e94560;
+    --accent2: #533483;
+    --green: #06d6a0;
+    --yellow: #ffd166;
+    --shadow: 0 4px 24px rgba(0,0,0,0.18);
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Nunito', sans-serif; background: var(--bg); overflow: hidden; height: 100vh; width: 100vw; }
+
+  /* ===== MODALS ===== */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(10,10,20,0.7); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+    transition: opacity 0.3s;
+  }
+  .modal-overlay.hidden { opacity: 0; pointer-events: none; }
+  .modal {
+    background: var(--toolbar-bg); border-radius: 20px; padding: 40px;
+    width: 400px; color: var(--text-light); box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .modal h2 { font-family: 'Caveat', cursive; font-size: 2rem; color: var(--accent); margin-bottom: 8px; }
+  .modal p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px; }
+  .modal input {
+    width: 100%; background: rgba(255,255,255,0.07); border: 1.5px solid rgba(255,255,255,0.12);
+    color: var(--text-light); padding: 12px 16px; border-radius: 10px; font-family: 'Nunito', sans-serif;
+    font-size: 0.95rem; margin-bottom: 12px; outline: none; transition: border-color 0.2s;
+  }
+  .modal input:focus { border-color: var(--accent); }
+  .modal-btn {
+    width: 100%; padding: 13px; border-radius: 10px; border: none; cursor: pointer;
+    font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 700;
+    background: var(--accent); color: white; margin-top: 4px; transition: background 0.2s, transform 0.1s;
+  }
+  .modal-btn:hover { background: #c73652; }
+  .modal-btn:active { transform: scale(0.98); }
+  .modal-btn.secondary { background: rgba(255,255,255,0.08); color: var(--text-light); margin-top: 8px; }
+  .modal-btn.secondary:hover { background: rgba(255,255,255,0.14); }
+  .modal-error { color: #ff6b7a; font-size: 0.85rem; margin-bottom: 8px; display: none; }
+  .modal-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+  .modal-tab {
+    flex: 1; padding: 10px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.9rem;
+    background: rgba(255,255,255,0.06); color: var(--text-muted); transition: all 0.2s;
+  }
+  .modal-tab.active { background: var(--accent); color: white; }
+
+  /* ===== TOOLBAR ===== */
+  #toolbar {
+    position: fixed; left: 0; top: 0; bottom: 0; width: 68px;
+    background: var(--toolbar-bg); display: flex; flex-direction: column; align-items: center;
+    padding: 12px 8px; gap: 4px; z-index: 100; box-shadow: 4px 0 20px rgba(0,0,0,0.3);
+    border-right: 1px solid rgba(255,255,255,0.05);
+  }
+  .logo {
+    font-family: 'Caveat', cursive; color: var(--accent); font-size: 1.1rem; font-weight: 700;
+    margin-bottom: 8px; text-align: center; line-height: 1.1; cursor: pointer;
+  }
+  .tb-sep { width: 36px; height: 1px; background: rgba(255,255,255,0.08); margin: 4px 0; }
+  .tb-btn {
+    width: 48px; height: 48px; border-radius: 12px; border: none; cursor: pointer;
+    background: transparent; color: var(--text-muted); display: flex; align-items: center;
+    justify-content: center; flex-direction: column; gap: 2px; transition: all 0.18s;
+    font-size: 20px; position: relative;
+  }
+  .tb-btn span.label {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-muted);
+    letter-spacing: 0.03em;
+  }
+  .tb-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-light); }
+  .tb-btn.active { background: var(--accent); color: white; box-shadow: 0 4px 12px rgba(233,69,96,0.4); }
+  .tb-btn.active .label { color: rgba(255,255,255,0.8); }
+  .tb-btn .tooltip {
+    position: absolute; left: 58px; background: #222; color: white; padding: 5px 10px;
+    border-radius: 6px; font-size: 0.78rem; white-space: nowrap; pointer-events: none;
+    opacity: 0; transition: opacity 0.15s; font-family: 'Nunito', sans-serif; z-index: 200;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  .tb-btn:hover .tooltip { opacity: 1; }
+  .tb-spacer { flex: 1; }
+
+  /* ===== TOP BAR ===== */
+  #topbar {
+    position: fixed; top: 0; left: 68px; right: 0; height: 54px;
+    background: var(--toolbar-bg); display: flex; align-items: center; gap: 8px;
+    padding: 0 16px; z-index: 99; box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .top-section { display: flex; align-items: center; gap: 6px; }
+  .top-sep { width: 1px; height: 30px; background: rgba(255,255,255,0.1); margin: 0 4px; }
+  
+  /* Size slider */
+  .size-wrap { display: flex; align-items: center; gap: 8px; }
+  .size-preview {
+    width: 36px; height: 36px; border-radius: 8px; background: rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .size-dot { border-radius: 50%; background: white; transition: all 0.2s; }
+  #sizeSlider {
+    -webkit-appearance: none; width: 80px; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,0.15); outline: none; cursor: pointer;
+  }
+  #sizeSlider::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent); cursor: pointer; box-shadow: 0 0 6px rgba(233,69,96,0.5);
+  }
+  #sizeVal { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); min-width: 24px; }
+
+  /* Opacity slider */
+  .opacity-wrap { display: flex; align-items: center; gap: 8px; }
+  #opacitySlider {
+    -webkit-appearance: none; width: 60px; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,0.15); outline: none; cursor: pointer;
+  }
+  #opacitySlider::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--yellow); cursor: pointer;
+  }
+  #opacityVal { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); min-width: 28px; }
+
+  /* Color palette */
+  .color-palette { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; max-width: 240px; }
+  .color-swatch {
+    width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+    border: 2px solid transparent; transition: all 0.15s; flex-shrink: 0;
+  }
+  .color-swatch.active { border-color: white; transform: scale(1.2); box-shadow: 0 0 8px rgba(255,255,255,0.4); }
+  #customColor { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); cursor: pointer; background: none; padding: 0; overflow: hidden; }
+  #customColor::-webkit-color-swatch-wrapper { padding: 0; }
+  #customColor::-webkit-color-swatch { border: none; border-radius: 50%; }
+
+  /* Zoom controls */
+  .zoom-controls { display: flex; align-items: center; gap: 4px; }
+  .zoom-btn {
+    width: 28px; height: 28px; border-radius: 7px; border: none; cursor: pointer;
+    background: rgba(255,255,255,0.08); color: var(--text-light); font-size: 16px;
+    display: flex; align-items: center; justify-content: center; transition: background 0.15s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .zoom-btn:hover { background: rgba(255,255,255,0.16); }
+  #zoomVal { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); min-width: 36px; text-align: center; cursor: pointer; }
+  #zoomVal:hover { color: var(--text-light); }
+
+  /* Action buttons */
+  .action-btn {
+    height: 32px; padding: 0 12px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.82rem;
+    transition: all 0.15s; display: flex; align-items: center; gap: 5px;
+  }
+  .action-btn.danger { background: rgba(233,69,96,0.15); color: #ff8fa3; }
+  .action-btn.danger:hover { background: rgba(233,69,96,0.3); }
+  .action-btn.success { background: rgba(6,214,160,0.15); color: var(--green); }
+  .action-btn.success:hover { background: rgba(6,214,160,0.3); }
+  .action-btn.info { background: rgba(255,255,255,0.07); color: var(--text-muted); }
+  .action-btn.info:hover { background: rgba(255,255,255,0.14); color: var(--text-light); }
+
+  #boardName {
+    background: transparent; border: none; color: var(--text-light); font-family: 'Caveat', cursive;
+    font-size: 1.3rem; font-weight: 600; outline: none; padding: 4px 8px; border-radius: 6px;
+    transition: background 0.15s; min-width: 120px; max-width: 200px;
+  }
+  #boardName:hover { background: rgba(255,255,255,0.06); }
+  #boardName:focus { background: rgba(255,255,255,0.1); }
+
+  /* ===== CANVAS AREA ===== */
+  #canvas-wrap {
+    position: fixed; top: 54px; left: 68px; right: 0; bottom: 0;
+    overflow: hidden; cursor: crosshair;
+    background: var(--bg);
+    background-image:
+      linear-gradient(var(--grid-strong) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-strong) 1px, transparent 1px),
+      linear-gradient(var(--grid-color) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+    background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+    background-position: 0 0, 0 0, 0 0, 0 0;
+  }
+  #mainCanvas {
+    position: absolute; top: 0; left: 0;
+    touch-action: none;
+  }
+  #tempCanvas {
+    position: absolute; top: 0; left: 0; pointer-events: none;
+  }
+
+  /* ===== PANELS ===== */
+  .panel {
+    position: fixed; right: 16px; background: var(--toolbar-bg); border-radius: 16px;
+    padding: 16px; color: var(--text-light); box-shadow: var(--shadow);
+    border: 1px solid rgba(255,255,255,0.08); z-index: 98; width: 240px;
+  }
+  .panel h3 { font-family: 'Caveat', cursive; font-size: 1.2rem; color: var(--accent); margin-bottom: 12px; }
+  .panel.hidden { display: none; }
+  #boardsPanel { top: 70px; }
+  #textPanel { bottom: 16px; }
+
+  /* Boards list */
+  .board-item {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px;
+    cursor: pointer; transition: background 0.15s; margin-bottom: 6px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+  }
+  .board-item:hover { background: rgba(255,255,255,0.1); }
+  .board-item.active-board { border-color: var(--accent); background: rgba(233,69,96,0.1); }
+  .board-item-name { flex: 1; font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .board-item-date { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); }
+  .board-item-del {
+    width: 20px; height: 20px; border-radius: 5px; border: none; cursor: pointer;
+    background: rgba(233,69,96,0.1); color: #ff8fa3; font-size: 12px; display: none;
+    align-items: center; justify-content: center;
+  }
+  .board-item:hover .board-item-del { display: flex; }
+  .new-board-btn {
+    width: 100%; padding: 10px; border-radius: 10px; border: 1px dashed rgba(255,255,255,0.15);
+    background: transparent; color: var(--text-muted); cursor: pointer; font-family: 'Nunito', sans-serif;
+    font-size: 0.85rem; transition: all 0.15s;
+  }
+  .new-board-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Text tool panel */
+  #textPanel { right: 16px; bottom: 16px; width: 220px; }
+  #textPanel select, #textPanel input[type=number] {
+    width: 100%; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+    color: var(--text-light); padding: 7px 10px; border-radius: 8px; font-size: 0.85rem;
+    margin-bottom: 8px; outline: none;
+  }
+  #textPanel label { font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 4px; }
+
+  /* Shape tool indicator */
+  .shape-palette { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+  .shape-btn {
+    width: 36px; height: 36px; border-radius: 8px; border: none; cursor: pointer;
+    background: rgba(255,255,255,0.06); color: var(--text-muted); font-size: 16px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .shape-btn.active { background: var(--accent); color: white; }
+  .shape-btn:hover:not(.active) { background: rgba(255,255,255,0.12); color: var(--text-light); }
+
+  /* Sticker panel */
+  .sticker-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-top: 8px; }
+  .sticker-btn {
+    width: 32px; height: 32px; border-radius: 6px; border: none; cursor: pointer;
+    background: rgba(255,255,255,0.05); font-size: 18px; display: flex;
+    align-items: center; justify-content: center; transition: background 0.15s;
+  }
+  .sticker-btn:hover { background: rgba(255,255,255,0.15); }
+
+  /* Toast notifications */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--toolbar-bg); color: var(--text-light); padding: 10px 20px;
+    border-radius: 24px; font-size: 0.88rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: var(--shadow); z-index: 500; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  #toast.show { opacity: 1; }
+
+  /* Cursor styles */
+  .cursor-pen { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='4' cy='20' r='3' fill='%23e94560'/%3E%3C/svg%3E") 4 20, crosshair; }
+  .cursor-eraser { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Crect x='4' y='4' width='16' height='16' rx='3' fill='%23ff8fa3' opacity='0.7'/%3E%3C/svg%3E") 12 12, crosshair; }
+  .cursor-text { cursor: text; }
+  .cursor-select { cursor: default; }
+  .cursor-pan { cursor: grab; }
+  .cursor-panning { cursor: grabbing; }
+
+  /* User button */
+  #userBtn {
+    display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 8px;
+    border: none; cursor: pointer; background: rgba(255,255,255,0.07); color: var(--text-light);
+    font-family: 'Nunito', sans-serif; font-size: 0.85rem; font-weight: 700; transition: background 0.15s;
+  }
+  #userBtn:hover { background: rgba(255,255,255,0.14); }
+  .user-avatar {
+    width: 24px; height: 24px; border-radius: 50%; background: var(--accent);
+    display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+  /* Sub-panel for shapes and stickers */
+  #subPanel {
+    position: fixed; left: 76px; background: var(--toolbar-bg); border-radius: 14px;
+    padding: 12px; color: var(--text-light); box-shadow: var(--shadow);
+    border: 1px solid rgba(255,255,255,0.08); z-index: 99; width: 190px;
+    display: none; top: 60px;
+  }
+  #subPanel.visible { display: block; }
+  #subPanel h4 { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* Image upload */
+  #imgUpload { display: none; }
+
+  /* Ruler/grid toggle */
+  .toggle-wrap { display: flex; align-items: center; gap: 6px; }
+  .toggle {
+    width: 36px; height: 20px; border-radius: 10px; background: rgba(255,255,255,0.1);
+    position: relative; cursor: pointer; transition: background 0.2s;
+  }
+  .toggle.on { background: var(--green); }
+  .toggle::after {
+    content: ''; position: absolute; width: 14px; height: 14px; background: white;
+    border-radius: 50%; top: 3px; left: 3px; transition: left 0.2s;
+  }
+  .toggle.on::after { left: 19px; }
+  .toggle-label { font-size: 0.78rem; color: var(--text-muted); }
+</style>
 </head>
 <body>
 
-<header>
-  <h1>🌸 Sakura Izakaya</h1>
-  <p>いらっしゃいませ — Welcome to Osaka Street Food</p>
-</header>
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal">
+    <h2>📚 StudyBoard</h2>
+    <p>Your free, permanent personal whiteboard for school.</p>
+    <div class="modal-tabs">
+      <button class="modal-tab active" onclick="switchTab('login')">Sign In</button>
+      <button class="modal-tab" onclick="switchTab('register')">Sign Up</button>
+    </div>
+    <div id="loginForm">
+      <input type="text" id="loginUser" placeholder="Username" autocomplete="username">
+      <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password">
+      <div class="modal-error" id="loginError"></div>
+      <button class="modal-btn" onclick="doLogin()">Sign In</button>
+      <button class="modal-btn secondary" onclick="guestMode()">Continue as Guest</button>
+    </div>
+    <div id="registerForm" style="display:none">
+      <input type="text" id="regUser" placeholder="Choose a username" autocomplete="username">
+      <input type="password" id="regPass" placeholder="Choose a password" autocomplete="new-password">
+      <input type="password" id="regPass2" placeholder="Confirm password" autocomplete="new-password">
+      <div class="modal-error" id="regError"></div>
+      <button class="modal-btn" onclick="doRegister()">Create Account</button>
+      <button class="modal-btn secondary" onclick="guestMode()">Continue as Guest</button>
+    </div>
+  </div>
+</div>
 
-<main>
-  <section id="menu">
-    <h2>🍽️ Izakaya Menu</h2>
-    <div id="menu-items"></div>
-  </section>
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <div class="logo" onclick="toggleBoardsPanel()" title="My Boards">📓<br>Study</div>
+  <div class="tb-sep"></div>
 
-  <section id="cart">
-    <h2>🛒 Your Cart</h2>
-    <ul id="cart-items"></ul>
-    <p id="total">Total: ¥0</p>
-    <button id="checkout">Checkout</button>
-  </section>
-</main>
+  <button class="tb-btn active" id="btn-pen" onclick="setTool('pen')" title="pen">
+    ✏️<span class="label">PEN</span>
+    <div class="tooltip">Pen (P)</div>
+  </button>
+  <button class="tb-btn" id="btn-marker" onclick="setTool('marker')" title="marker">
+    🖊️<span class="label">MKR</span>
+    <div class="tooltip">Marker (M)</div>
+  </button>
+  <button class="tb-btn" id="btn-highlighter" onclick="setTool('highlighter')" title="highlighter">
+    🖌️<span class="label">HLT</span>
+    <div class="tooltip">Highlighter (H)</div>
+  </button>
+  <button class="tb-btn" id="btn-eraser" onclick="setTool('eraser')" title="eraser">
+    🧹<span class="label">ERS</span>
+    <div class="tooltip">Eraser (E)</div>
+  </button>
 
-<footer>
-  <p>© Sakura Izakaya — Osaka vibes 🍶</p>
-</footer>
+  <div class="tb-sep"></div>
 
-<script src="script.js"></script>
+  <button class="tb-btn" id="btn-shape" onclick="setTool('shape')">
+    🔷<span class="label">SHP</span>
+    <div class="tooltip">Shapes (S)</div>
+  </button>
+  <button class="tb-btn" id="btn-line" onclick="setTool('line')">
+    ╱<span class="label">LNE</span>
+    <div class="tooltip">Line (L)</div>
+  </button>
+  <button class="tb-btn" id="btn-text" onclick="setTool('text')">
+    🅣<span class="label">TXT</span>
+    <div class="tooltip">Text (T)</div>
+  </button>
+  <button class="tb-btn" id="btn-sticker" onclick="setTool('sticker')">
+    ⭐<span class="label">STK</span>
+    <div class="tooltip">Stickers</div>
+  </button>
+  <button class="tb-btn" id="btn-image" onclick="document.getElementById('imgUpload').click()">
+    🖼️<span class="label">IMG</span>
+    <div class="tooltip">Insert Image</div>
+  </button>
+  <button class="tb-btn" id="btn-pan" onclick="setTool('pan')">
+    ✋<span class="label">PAN</span>
+    <div class="tooltip">Pan (Space)</div>
+  </button>
+
+  <div class="tb-sep"></div>
+
+  <button class="tb-btn" onclick="undo()">↩️<span class="label">UND</span><div class="tooltip">Undo (Ctrl+Z)</div></button>
+  <button class="tb-btn" onclick="redo()">↪️<span class="label">RED</span><div class="tooltip">Redo (Ctrl+Y)</div></button>
+
+  <div class="tb-spacer"></div>
+
+  <button class="tb-btn" onclick="downloadPNG()">💾<span class="label">PNG</span><div class="tooltip">Download PNG</div></button>
+  <button class="tb-btn danger" id="btn-clear" onclick="confirmClear()">🗑️<span class="label">CLR</span><div class="tooltip">Clear Board</div></button>
+</div>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <!-- Board name -->
+  <input type="text" id="boardName" value="My Board" onblur="saveCurrentBoard()" onkeydown="if(event.key==='Enter')this.blur()">
+  <div class="top-sep"></div>
+
+  <!-- Size -->
+  <div class="size-wrap">
+    <div class="size-preview"><div class="size-dot" id="sizeDot"></div></div>
+    <input type="range" id="sizeSlider" min="1" max="60" value="4" oninput="updateSize(this.value)">
+    <span id="sizeVal">4px</span>
+  </div>
+  <div class="top-sep"></div>
+
+  <!-- Opacity -->
+  <div class="opacity-wrap">
+    <span style="font-size:14px">💧</span>
+    <input type="range" id="opacitySlider" min="5" max="100" value="100" oninput="updateOpacity(this.value)">
+    <span id="opacityVal">100%</span>
+  </div>
+  <div class="top-sep"></div>
+
+  <!-- Colors -->
+  <div class="color-palette" id="colorPalette"></div>
+  <input type="color" id="customColor" value="#e94560" onchange="setColor(this.value, null)">
+  <div class="top-sep"></div>
+
+  <!-- Zoom -->
+  <div class="zoom-controls">
+    <button class="zoom-btn" onclick="zoom(-0.1)">−</button>
+    <span id="zoomVal" onclick="resetZoom()" title="Click to reset">100%</span>
+    <button class="zoom-btn" onclick="zoom(0.1)">+</button>
+  </div>
+  <div class="top-sep"></div>
+
+  <!-- Grid toggle -->
+  <div class="toggle-wrap">
+    <div class="toggle on" id="gridToggle" onclick="toggleGrid()" title="Toggle grid"></div>
+    <span class="toggle-label">Grid</span>
+  </div>
+  <div class="top-sep"></div>
+
+  <!-- Actions -->
+  <button class="action-btn info" onclick="saveCurrentBoard()">💾 Save</button>
+  
+  <div style="flex:1"></div>
+
+  <!-- User -->
+  <button id="userBtn" onclick="showUserMenu()">
+    <div class="user-avatar" id="userAvatar">?</div>
+    <span id="userName">Guest</span>
+  </button>
+</div>
+
+<!-- SUB PANEL for shapes/stickers -->
+<div id="subPanel">
+  <div id="subShapes">
+    <h4>Shapes</h4>
+    <div class="shape-palette">
+      <button class="shape-btn active" onclick="setShape('rect')" title="Rectangle">▭</button>
+      <button class="shape-btn" onclick="setShape('circle')" title="Circle">○</button>
+      <button class="shape-btn" onclick="setShape('triangle')" title="Triangle">△</button>
+      <button class="shape-btn" onclick="setShape('arrow')" title="Arrow">→</button>
+      <button class="shape-btn" onclick="setShape('diamond')" title="Diamond">◇</button>
+      <button class="shape-btn" onclick="setShape('star')" title="Star">☆</button>
+    </div>
+    <div style="margin-top:10px">
+      <label class="toggle-label">Fill shape</label>
+      <div class="toggle" id="fillToggle" onclick="toggleFill()"></div>
+    </div>
+  </div>
+  <div id="subStickers" style="display:none">
+    <h4>Stickers</h4>
+    <div class="sticker-grid" id="stickerGrid"></div>
+  </div>
+</div>
+
+<!-- BOARDS PANEL -->
+<div class="panel hidden" id="boardsPanel">
+  <h3>📚 My Boards</h3>
+  <div id="boardsList"></div>
+  <button class="new-board-btn" onclick="newBoard()">+ New Board</button>
+</div>
+
+<!-- TEXT OPTIONS (when text tool active) -->
+<div class="panel hidden" id="textOptionsPanel">
+  <h3>🅣 Text</h3>
+  <label>Font size</label>
+  <input type="number" id="textSize" value="20" min="8" max="120">
+  <label>Font</label>
+  <select id="textFont">
+    <option value="Nunito">Nunito (Clean)</option>
+    <option value="Caveat">Caveat (Handwritten)</option>
+    <option value="JetBrains Mono">Mono (Code)</option>
+    <option value="serif">Serif</option>
+    <option value="Georgia">Georgia</option>
+  </select>
+  <label>Style</label>
+  <div style="display:flex;gap:6px;margin-bottom:8px">
+    <button class="shape-btn" id="boldBtn" onclick="toggleTextStyle('bold')" style="font-weight:bold">B</button>
+    <button class="shape-btn" id="italicBtn" onclick="toggleTextStyle('italic')" style="font-style:italic">I</button>
+    <button class="shape-btn" id="underlineBtn" onclick="toggleTextStyle('underline')">U̲</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- Image upload -->
+<input type="file" id="imgUpload" accept="image/*" onchange="insertImage(event)">
+
+<!-- CANVAS AREA -->
+<div id="canvas-wrap" id="canvasWrap">
+  <canvas id="mainCanvas"></canvas>
+  <canvas id="tempCanvas"></canvas>
+  <!-- Text input overlay -->
+  <div id="textInputWrap" style="position:absolute;display:none;">
+    <div id="textInput" contenteditable="true" style="
+      min-width:4px;min-height:1.2em;outline:none;
+      font-family:Nunito,sans-serif;font-size:20px;color:#1a1a2e;
+      border-bottom:2px dashed #e94560;padding:2px 4px;
+      white-space:pre;background:rgba(255,255,255,0.6);border-radius:4px;
+    "></div>
+  </div>
+</div>
+
+<script>
+// ===================== STATE =====================
+let currentUser = null;
+let isGuest = false;
+let boards = []; // {id, name, data, created, updated}
+let currentBoardId = null;
+
+let tool = 'pen';
+let color = '#1a1a2e';
+let brushSize = 4;
+let opacity = 1;
+let currentShape = 'rect';
+let shapeFill = false;
+let textBold = false, textItalic = false, textUnderline = false;
+let currentSticker = '⭐';
+
+let isDrawing = false;
+let isPanning = false;
+let lastX = 0, lastY = 0;
+let startX = 0, startY = 0;
+
+let scale = 1;
+let panX = 0, panY = 0;
+let panStartX = 0, panStartY = 0;
+
+let history = []; // array of ImageData
+let redoStack = [];
+let MAX_HISTORY = 60;
+
+let spaceHeld = false;
+let prevTool = 'pen';
+
+const COLORS = [
+  '#1a1a2e','#16213e','#0f3460','#e94560','#06d6a0',
+  '#ffd166','#ef8c00','#a8dadc','#457b9d','#f72585',
+  '#7209b7','#3a86ff','#ff006e','#ffffff','#8d99ae',
+];
+
+const STICKERS = ['⭐','💡','❓','✅','❌','🔥','📌','💬','🎯','⚠️','📚','✨','💯','🏆','🎨','📝','💭','🔑','🌟','🚀','❤️','🧠','💪','⚡'];
+
+// ===================== INIT =====================
+window.onload = () => {
+  setupCanvas();
+  setupColors();
+  setupStickers();
+  updateSize(4);
+  setColor('#1a1a2e', 0);
+  setupKeyboard();
+  checkAutoLogin();
+};
+
+function checkAutoLogin() {
+  const saved = localStorage.getItem('sb_user');
+  if (saved) {
+    currentUser = saved;
+    isGuest = false;
+    afterLogin();
+  }
+  // Show auth modal
+}
+
+function setupCanvas() {
+  const wrap = document.getElementById('canvas-wrap');
+  const main = document.getElementById('mainCanvas');
+  const temp = document.getElementById('tempCanvas');
+  
+  const W = wrap.clientWidth || window.innerWidth - 68;
+  const H = wrap.clientHeight || window.innerHeight - 54;
+  
+  // Large virtual canvas
+  const VW = 4000, VH = 3000;
+  main.width = VW; main.height = VH;
+  temp.width = VW; temp.height = VH;
+  
+  main.style.width = VW + 'px';
+  main.style.height = VH + 'px';
+  temp.style.width = VW + 'px';
+  temp.style.height = VH + 'px';
+
+  applyTransform();
+  
+  // Events
+  const wrap2 = document.getElementById('canvas-wrap');
+  wrap2.addEventListener('mousedown', onPointerDown);
+  wrap2.addEventListener('mousemove', onPointerMove);
+  wrap2.addEventListener('mouseup', onPointerUp);
+  wrap2.addEventListener('mouseleave', onPointerUp);
+  wrap2.addEventListener('wheel', onWheel, {passive: false});
+  
+  // Touch
+  wrap2.addEventListener('touchstart', onTouchStart, {passive: false});
+  wrap2.addEventListener('touchmove', onTouchMove, {passive: false});
+  wrap2.addEventListener('touchend', onTouchEnd);
+  
+  // Text input
+  document.getElementById('textInput').addEventListener('keydown', e => {
+    if (e.key === 'Escape') commitText();
+    e.stopPropagation();
+  });
+  
+  saveHistory();
+}
+
+function setupColors() {
+  const pal = document.getElementById('colorPalette');
+  COLORS.forEach((c, i) => {
+    const sw = document.createElement('div');
+    sw.className = 'color-swatch' + (i === 0 ? ' active' : '');
+    sw.style.background = c;
+    if (c === '#ffffff') sw.style.border = '2px solid #444';
+    sw.onclick = () => setColor(c, i);
+    sw.dataset.idx = i;
+    pal.appendChild(sw);
+  });
+}
+
+function setupStickers() {
+  const grid = document.getElementById('stickerGrid');
+  STICKERS.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'sticker-btn';
+    btn.textContent = s;
+    btn.onclick = () => { currentSticker = s; };
+    grid.appendChild(btn);
+  });
+}
+
+function setupKeyboard() {
+  document.addEventListener('keydown', e => {
+    if (e.target.id === 'textInput' || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+    if (e.key === ' ') { e.preventDefault(); if (!spaceHeld) { spaceHeld = true; prevTool = tool; setTool('pan'); } }
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'z') { e.preventDefault(); undo(); }
+      if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
+      if (e.key === 's') { e.preventDefault(); saveCurrentBoard(); }
+      if (e.key === '+' || e.key === '=') { e.preventDefault(); zoom(0.1); }
+      if (e.key === '-') { e.preventDefault(); zoom(-0.1); }
+      if (e.key === '0') { e.preventDefault(); resetZoom(); }
+    }
+    if (!e.ctrlKey && !e.metaKey) {
+      if (e.key === 'p') setTool('pen');
+      if (e.key === 'm') setTool('marker');
+      if (e.key === 'h') setTool('highlighter');
+      if (e.key === 'e') setTool('eraser');
+      if (e.key === 's') setTool('shape');
+      if (e.key === 'l') setTool('line');
+      if (e.key === 't') setTool('text');
+      if (e.key === 'Escape') commitText();
+    }
+  });
+  document.addEventListener('keyup', e => {
+    if (e.key === ' ') { spaceHeld = false; if (prevTool) setTool(prevTool); }
+  });
+}
+
+// ===================== TOOLS =====================
+function setTool(t) {
+  const prev = tool;
+  tool = t;
+  
+  // Update UI
+  document.querySelectorAll('.tb-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('btn-' + t);
+  if (btn) btn.classList.add('active');
+  
+  // Sub panels
+  const sp = document.getElementById('subPanel');
+  sp.classList.remove('visible');
+  document.getElementById('subShapes').style.display = 'none';
+  document.getElementById('subStickers').style.display = 'none';
+  document.getElementById('textOptionsPanel').classList.add('hidden');
+  
+  if (t === 'shape') { sp.classList.add('visible'); document.getElementById('subShapes').style.display = 'block'; }
+  if (t === 'sticker') { sp.classList.add('visible'); document.getElementById('subStickers').style.display = 'block'; }
+  if (t === 'text') { document.getElementById('textOptionsPanel').classList.remove('hidden'); }
+  if (t === 'image') { document.getElementById('btn-image')?.classList.add('active'); }
+  
+  // Cursor
+  const wrap = document.getElementById('canvas-wrap');
+  wrap.className = '';
+  if (t === 'pen' || t === 'marker' || t === 'highlighter') wrap.classList.add('cursor-pen');
+  else if (t === 'eraser') wrap.classList.add('cursor-eraser');
+  else if (t === 'text') wrap.classList.add('cursor-text');
+  else if (t === 'pan') wrap.classList.add('cursor-pan');
+  else wrap.style.cursor = 'crosshair';
+  
+  // Opacity default for highlighter
+  if (t === 'highlighter') { updateOpacity(40); document.getElementById('opacitySlider').value = 40; }
+  else if (prev === 'highlighter') { updateOpacity(100); document.getElementById('opacitySlider').value = 100; }
+  
+  commitText();
+}
+
+function setShape(s) {
+  currentShape = s;
+  document.querySelectorAll('#subShapes .shape-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function toggleFill() {
+  shapeFill = !shapeFill;
+  document.getElementById('fillToggle').classList.toggle('on', shapeFill);
+}
+
+function toggleTextStyle(s) {
+  if (s === 'bold') { textBold = !textBold; document.getElementById('boldBtn').classList.toggle('active', textBold); }
+  if (s === 'italic') { textItalic = !textItalic; document.getElementById('italicBtn').classList.toggle('active', textItalic); }
+  if (s === 'underline') { textUnderline = !textUnderline; document.getElementById('underlineBtn').classList.toggle('active', textUnderline); }
+}
+
+// ===================== DRAWING =====================
+function getCtx() { return document.getElementById('mainCanvas').getContext('2d'); }
+function getTCtx() { return document.getElementById('tempCanvas').getContext('2d'); }
+
+function canvasCoords(e) {
+  const wrap = document.getElementById('canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const cx = (e.clientX - rect.left - panX) / scale;
+  const cy = (e.clientY - rect.top - panY) / scale;
+  return [cx, cy];
+}
+
+function onPointerDown(e) {
+  if (e.button !== 0) return;
+  const [x, y] = canvasCoords(e);
+  
+  if (tool === 'pan' || spaceHeld) {
+    isPanning = true;
+    panStartX = e.clientX - panX;
+    panStartY = e.clientY - panY;
+    document.getElementById('canvas-wrap').classList.add('cursor-panning');
+    return;
+  }
+  
+  if (tool === 'text') { placeTextCursor(x, y); return; }
+  if (tool === 'sticker') { placeSticker(x, y); return; }
+  if (tool === 'image') return;
+  
+  isDrawing = true;
+  startX = x; startY = y;
+  lastX = x; lastY = y;
+  
+  const ctx = getCtx();
+  ctx.save();
+  setupCtxStyle(ctx);
+  
+  if (tool === 'pen' || tool === 'marker' || tool === 'highlighter' || tool === 'eraser') {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    // Dot for click
+    ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  }
+  ctx.restore();
+}
+
+function onPointerMove(e) {
+  if (isPanning) {
+    panX = e.clientX - panStartX;
+    panY = e.clientY - panStartY;
+    applyTransform();
+    return;
+  }
+  if (!isDrawing) return;
+  
+  const [x, y] = canvasCoords(e);
+  const ctx = getCtx();
+  const tCtx = getTCtx();
+  
+  if (tool === 'pen' || tool === 'marker' || tool === 'highlighter') {
+    ctx.save();
+    setupCtxStyle(ctx);
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.restore();
+  } else if (tool === 'eraser') {
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.lineWidth = brushSize;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.restore();
+  } else if (tool === 'shape' || tool === 'line') {
+    // Draw on temp canvas
+    tCtx.clearRect(0, 0, 4000, 3000);
+    tCtx.save();
+    setupCtxStyle(tCtx);
+    drawShape(tCtx, startX, startY, x, y);
+    tCtx.restore();
+  }
+  
+  lastX = x; lastY = y;
+}
+
+function onPointerUp(e) {
+  if (isPanning) {
+    isPanning = false;
+    const wrap = document.getElementById('canvas-wrap');
+    if (tool === 'pan') wrap.classList.remove('cursor-panning');
+    return;
+  }
+  if (!isDrawing) return;
+  isDrawing = false;
+  
+  const [x, y] = canvasCoords(e);
+  
+  if (tool === 'shape' || tool === 'line') {
+    const ctx = getCtx();
+    const tCtx = getTCtx();
+    tCtx.clearRect(0, 0, 4000, 3000);
+    ctx.save();
+    setupCtxStyle(ctx);
+    drawShape(ctx, startX, startY, x, y);
+    ctx.restore();
+  }
+  
+  saveHistory();
+}
+
+function setupCtxStyle(ctx) {
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = brushSize;
+  
+  if (tool === 'highlighter') {
+    ctx.globalAlpha = opacity * 0.5;
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = brushSize * 3;
+    ctx.lineCap = 'square';
+  } else if (tool === 'marker') {
+    ctx.globalAlpha = opacity;
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = brushSize * 2;
+  } else {
+    ctx.globalAlpha = opacity;
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+  }
+}
+
+function drawShape(ctx, x1, y1, x2, y2) {
+  const w = x2 - x1, h = y2 - y1;
+  ctx.beginPath();
+  
+  if (tool === 'line') {
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    return;
+  }
+  
+  switch (currentShape) {
+    case 'rect':
+      ctx.rect(x1, y1, w, h);
+      break;
+    case 'circle':
+      ctx.ellipse(x1 + w/2, y1 + h/2, Math.abs(w/2), Math.abs(h/2), 0, 0, Math.PI*2);
+      break;
+    case 'triangle':
+      ctx.moveTo(x1 + w/2, y1);
+      ctx.lineTo(x2, y2);
+      ctx.lineTo(x1, y2);
+      ctx.closePath();
+      break;
+    case 'diamond':
+      ctx.moveTo(x1 + w/2, y1);
+      ctx.lineTo(x2, y1 + h/2);
+      ctx.lineTo(x1 + w/2, y2);
+      ctx.lineTo(x1, y1 + h/2);
+      ctx.closePath();
+      break;
+    case 'star':
+      drawStar(ctx, x1 + w/2, y1 + h/2, 5, Math.min(Math.abs(w),Math.abs(h))/2, Math.min(Math.abs(w),Math.abs(h))/4);
+      break;
+    case 'arrow':
+      drawArrow(ctx, x1, y1 + h/2, x2, y2 - h/2 + (h > 0 ? h : 0));
+      return;
+  }
+  
+  if (shapeFill) { ctx.fill(); } else { ctx.stroke(); }
+}
+
+function drawStar(ctx, cx, cy, spikes, outerR, innerR) {
+  let rot = (Math.PI / 2) * 3;
+  const step = Math.PI / spikes;
+  ctx.moveTo(cx, cy - outerR);
+  for (let i = 0; i < spikes; i++) {
+    ctx.lineTo(cx + Math.cos(rot) * outerR, cy + Math.sin(rot) * outerR);
+    rot += step;
+    ctx.lineTo(cx + Math.cos(rot) * innerR, cy + Math.sin(rot) * innerR);
+    rot += step;
+  }
+  ctx.lineTo(cx, cy - outerR);
+  ctx.closePath();
+  if (shapeFill) ctx.fill(); else ctx.stroke();
+}
+
+function drawArrow(ctx, x1, y1, x2, y2) {
+  const headlen = 20;
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI/6), y2 - headlen * Math.sin(angle - Math.PI/6));
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI/6), y2 - headlen * Math.sin(angle + Math.PI/6));
+  ctx.stroke();
+}
+
+// ===================== TEXT =====================
+let textActive = false;
+let textPosX = 0, textPosY = 0;
+
+function placeTextCursor(x, y) {
+  commitText();
+  textPosX = x; textPosY = y;
+  textActive = true;
+  
+  const wrap = document.getElementById('textInputWrap');
+  const input = document.getElementById('textInput');
+  const fs = parseInt(document.getElementById('textSize').value) || 20;
+  const ff = document.getElementById('textFont').value;
+  
+  const sx = x * scale + panX;
+  const sy = y * scale + panY;
+  
+  wrap.style.display = 'block';
+  wrap.style.left = sx + 'px';
+  wrap.style.top = sy + 'px';
+  
+  input.style.fontFamily = ff;
+  input.style.fontSize = (fs * scale) + 'px';
+  input.style.color = color;
+  input.style.fontWeight = textBold ? 'bold' : 'normal';
+  input.style.fontStyle = textItalic ? 'italic' : 'normal';
+  input.style.textDecoration = textUnderline ? 'underline' : 'none';
+  input.textContent = '';
+  input.focus();
+}
+
+function commitText() {
+  if (!textActive) return;
+  const input = document.getElementById('textInput');
+  const txt = input.innerText.trim();
+  if (txt) {
+    const ctx = getCtx();
+    const fs = parseInt(document.getElementById('textSize').value) || 20;
+    const ff = document.getElementById('textFont').value;
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    ctx.fillStyle = color;
+    let fontStr = '';
+    if (textItalic) fontStr += 'italic ';
+    if (textBold) fontStr += 'bold ';
+    fontStr += fs + 'px ' + ff;
+    ctx.font = fontStr;
+    
+    const lines = txt.split('\n');
+    lines.forEach((line, i) => {
+      ctx.fillText(line, textPosX, textPosY + fs + i * (fs * 1.3));
+    });
+    
+    if (textUnderline) {
+      lines.forEach((line, i) => {
+        const w = ctx.measureText(line).width;
+        const uy = textPosY + fs + i * (fs * 1.3) + 3;
+        ctx.fillRect(textPosX, uy, w, 2);
+      });
+    }
+    ctx.restore();
+    saveHistory();
+  }
+  
+  document.getElementById('textInputWrap').style.display = 'none';
+  input.textContent = '';
+  textActive = false;
+}
+
+// ===================== STICKERS =====================
+function placeSticker(x, y) {
+  const ctx = getCtx();
+  ctx.save();
+  ctx.font = (brushSize * 8) + 'px serif';
+  ctx.fillText(currentSticker, x, y);
+  ctx.restore();
+  saveHistory();
+}
+
+// ===================== IMAGE =====================
+function insertImage(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const ctx = getCtx();
+      // Place at center of current view
+      const wrap = document.getElementById('canvas-wrap');
+      const cx = (wrap.clientWidth / 2 - panX) / scale;
+      const cy = (wrap.clientHeight / 2 - panY) / scale;
+      const maxW = Math.min(img.width, 600);
+      const ratio = maxW / img.width;
+      ctx.drawImage(img, cx - maxW/2, cy - (img.height*ratio)/2, maxW, img.height*ratio);
+      saveHistory();
+      toast('Image inserted!');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+  setTool('pen');
+}
+
+// ===================== ZOOM & PAN =====================
+function zoom(delta) {
+  const wrap = document.getElementById('canvas-wrap');
+  const cx = wrap.clientWidth / 2;
+  const cy = wrap.clientHeight / 2;
+  
+  const prevScale = scale;
+  scale = Math.max(0.1, Math.min(5, scale + delta));
+  
+  panX = cx - (cx - panX) * (scale / prevScale);
+  panY = cy - (cy - panY) * (scale / prevScale);
+  
+  applyTransform();
+  document.getElementById('zoomVal').textContent = Math.round(scale * 100) + '%';
+}
+
+function resetZoom() {
+  scale = 1; panX = 0; panY = 0;
+  applyTransform();
+  document.getElementById('zoomVal').textContent = '100%';
+}
+
+function onWheel(e) {
+  e.preventDefault();
+  if (e.ctrlKey || e.metaKey) {
+    const delta = e.deltaY > 0 ? -0.08 : 0.08;
+    const wrap = document.getElementById('canvas-wrap');
+    const rect = wrap.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const prevScale = scale;
+    scale = Math.max(0.1, Math.min(5, scale + delta));
+    panX = mx - (mx - panX) * (scale / prevScale);
+    panY = my - (my - panY) * (scale / prevScale);
+    applyTransform();
+    document.getElementById('zoomVal').textContent = Math.round(scale * 100) + '%';
+  } else {
+    panX -= e.deltaX;
+    panY -= e.deltaY;
+    applyTransform();
+  }
+}
+
+function applyTransform() {
+  const main = document.getElementById('mainCanvas');
+  const temp = document.getElementById('tempCanvas');
+  const t = `translate(${panX}px, ${panY}px) scale(${scale})`;
+  main.style.transform = t;
+  temp.style.transform = t;
+  main.style.transformOrigin = '0 0';
+  temp.style.transformOrigin = '0 0';
+  
+  // Update grid background
+  const wrap = document.getElementById('canvas-wrap');
+  const gridSmall = 20 * scale;
+  const gridLarge = 100 * scale;
+  const ox = panX % gridLarge;
+  const oy = panY % gridLarge;
+  const ox2 = panX % gridSmall;
+  const oy2 = panY % gridSmall;
+  
+  if (document.getElementById('gridToggle').classList.contains('on')) {
+    wrap.style.backgroundSize = `${gridLarge}px ${gridLarge}px, ${gridLarge}px ${gridLarge}px, ${gridSmall}px ${gridSmall}px, ${gridSmall}px ${gridSmall}px`;
+    wrap.style.backgroundPosition = `${ox}px ${oy}px, ${ox}px ${oy}px, ${ox2}px ${oy2}px, ${ox2}px ${oy2}px`;
+  }
+}
+
+// Touch pan/pinch
+let lastTouchDist = 0;
+let touches = [];
+
+function onTouchStart(e) {
+  e.preventDefault();
+  touches = Array.from(e.touches);
+  if (touches.length === 2) {
+    lastTouchDist = Math.hypot(touches[1].clientX - touches[0].clientX, touches[1].clientY - touches[0].clientY);
+    isPanning = true;
+  } else if (touches.length === 1) {
+    const t = touches[0];
+    onPointerDown({clientX: t.clientX, clientY: t.clientY, button: 0});
+  }
+}
+
+function onTouchMove(e) {
+  e.preventDefault();
+  const ts = Array.from(e.touches);
+  if (ts.length === 2) {
+    const dist = Math.hypot(ts[1].clientX - ts[0].clientX, ts[1].clientY - ts[0].clientY);
+    const delta = (dist - lastTouchDist) * 0.005;
+    zoom(delta);
+    lastTouchDist = dist;
+    panX += (ts[0].clientX - touches[0].clientX);
+    panY += (ts[0].clientY - touches[0].clientY);
+    touches = ts;
+    applyTransform();
+  } else if (ts.length === 1) {
+    onPointerMove({clientX: ts[0].clientX, clientY: ts[0].clientY});
+  }
+}
+
+function onTouchEnd(e) {
+  onPointerUp({clientX: 0, clientY: 0});
+  if (e.touches.length < 2) isPanning = false;
+}
+
+// ===================== HISTORY =====================
+function saveHistory() {
+  const ctx = getCtx();
+  const data = ctx.getImageData(0, 0, 4000, 3000);
+  history.push(data);
+  if (history.length > MAX_HISTORY) history.shift();
+  redoStack = [];
+}
+
+function undo() {
+  if (history.length <= 1) { toast('Nothing to undo'); return; }
+  const cur = history.pop();
+  redoStack.push(cur);
+  const ctx = getCtx();
+  ctx.putImageData(history[history.length - 1], 0, 0);
+  toast('Undo');
+}
+
+function redo() {
+  if (!redoStack.length) { toast('Nothing to redo'); return; }
+  const data = redoStack.pop();
+  history.push(data);
+  const ctx = getCtx();
+  ctx.putImageData(data, 0, 0);
+  toast('Redo');
+}
+
+// ===================== CONTROLS =====================
+function setColor(c, idx) {
+  color = c;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+  if (idx !== null && idx !== undefined) {
+    document.querySelectorAll('.color-swatch')[idx]?.classList.add('active');
+  }
+  document.getElementById('customColor').value = c;
+  updateSizeDot();
+}
+
+function updateSize(v) {
+  brushSize = parseInt(v);
+  document.getElementById('sizeVal').textContent = v + 'px';
+  updateSizeDot();
+}
+
+function updateSizeDot() {
+  const dot = document.getElementById('sizeDot');
+  const s = Math.max(2, Math.min(32, brushSize));
+  dot.style.width = s + 'px';
+  dot.style.height = s + 'px';
+  dot.style.background = color;
+}
+
+function updateOpacity(v) {
+  opacity = v / 100;
+  document.getElementById('opacityVal').textContent = v + '%';
+}
+
+function toggleGrid() {
+  const toggle = document.getElementById('gridToggle');
+  const wrap = document.getElementById('canvas-wrap');
+  toggle.classList.toggle('on');
+  if (toggle.classList.contains('on')) {
+    wrap.style.backgroundImage = `
+      linear-gradient(var(--grid-strong) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-strong) 1px, transparent 1px),
+      linear-gradient(var(--grid-color) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-color) 1px, transparent 1px)`;
+    applyTransform();
+  } else {
+    wrap.style.backgroundImage = 'none';
+  }
+}
+
+// ===================== BOARDS =====================
+function newBoard() {
+  commitText();
+  saveCurrentBoard();
+  const id = 'board_' + Date.now();
+  const board = { id, name: 'New Board', data: '', created: new Date().toISOString(), updated: new Date().toISOString() };
+  boards.push(board);
+  currentBoardId = id;
+  
+  // Clear canvas
+  const ctx = getCtx();
+  ctx.clearRect(0, 0, 4000, 3000);
+  history = [];
+  redoStack = [];
+  saveHistory();
+  
+  document.getElementById('boardName').value = 'New Board';
+  renderBoardsList();
+  saveBoards();
+  toast('New board created!');
+}
+
+function loadBoard(id) {
+  commitText();
+  saveCurrentBoard();
+  currentBoardId = id;
+  const board = boards.find(b => b.id === id);
+  if (!board) return;
+  
+  document.getElementById('boardName').value = board.name;
+  
+  const ctx = getCtx();
+  history = [];
+  redoStack = [];
+  
+  if (board.data) {
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, 4000, 3000);
+      ctx.drawImage(img, 0, 0);
+      saveHistory();
+    };
+    img.src = board.data;
+  } else {
+    ctx.clearRect(0, 0, 4000, 3000);
+    saveHistory();
+  }
+  
+  renderBoardsList();
+  toast('Board loaded: ' + board.name);
+}
+
+function saveCurrentBoard() {
+  if (!currentBoardId) return;
+  const canvas = document.getElementById('mainCanvas');
+  const name = document.getElementById('boardName').value || 'Untitled';
+  
+  let board = boards.find(b => b.id === currentBoardId);
+  if (!board) {
+    board = { id: currentBoardId, name, data: '', created: new Date().toISOString(), updated: '' };
+    boards.push(board);
+  }
+  board.name = name;
+  board.data = canvas.toDataURL();
+  board.updated = new Date().toISOString();
+  
+  saveBoards();
+  renderBoardsList();
+}
+
+function deleteBoard(id, e) {
+  e.stopPropagation();
+  if (!confirm('Delete this board?')) return;
+  boards = boards.filter(b => b.id !== id);
+  saveBoards();
+  if (currentBoardId === id) {
+    if (boards.length > 0) loadBoard(boards[0].id);
+    else newBoard();
+  } else {
+    renderBoardsList();
+  }
+}
+
+function saveBoards() {
+  if (!currentUser && !isGuest) return;
+  const key = currentUser ? 'sb_boards_' + currentUser : 'sb_boards_guest';
+  try { localStorage.setItem(key, JSON.stringify(boards)); } catch(e) {}
+}
+
+function loadBoards() {
+  const key = currentUser ? 'sb_boards_' + currentUser : 'sb_boards_guest';
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved) boards = JSON.parse(saved);
+  } catch(e) { boards = []; }
+}
+
+function renderBoardsList() {
+  const list = document.getElementById('boardsList');
+  list.innerHTML = '';
+  boards.forEach(b => {
+    const item = document.createElement('div');
+    item.className = 'board-item' + (b.id === currentBoardId ? ' active-board' : '');
+    const date = b.updated ? new Date(b.updated).toLocaleDateString() : '';
+    item.innerHTML = `
+      <div style="flex:1;min-width:0">
+        <div class="board-item-name">${b.name}</div>
+        <div class="board-item-date">${date}</div>
+      </div>
+      <button class="board-item-del" onclick="deleteBoard('${b.id}', event)">✕</button>`;
+    item.onclick = () => loadBoard(b.id);
+    list.appendChild(item);
+  });
+}
+
+function toggleBoardsPanel() {
+  document.getElementById('boardsPanel').classList.toggle('hidden');
+}
+
+// ===================== AUTH =====================
+function switchTab(tab) {
+  document.querySelectorAll('.modal-tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0) === (tab === 'login'));
+  });
+  document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+}
+
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  if (!u || !p) { showError('loginError', 'Please fill all fields'); return; }
+  
+  const users = JSON.parse(localStorage.getItem('sb_users') || '{}');
+  if (!users[u]) { showError('loginError', 'User not found'); return; }
+  if (users[u] !== btoa(p)) { showError('loginError', 'Wrong password'); return; }
+  
+  currentUser = u;
+  isGuest = false;
+  localStorage.setItem('sb_user', u);
+  afterLogin();
+}
+
+function doRegister() {
+  const u = document.getElementById('regUser').value.trim();
+  const p = document.getElementById('regPass').value;
+  const p2 = document.getElementById('regPass2').value;
+  
+  if (!u || !p) { showError('regError', 'Please fill all fields'); return; }
+  if (p !== p2) { showError('regError', "Passwords don't match"); return; }
+  if (u.length < 3) { showError('regError', 'Username too short (min 3)'); return; }
+  if (p.length < 4) { showError('regError', 'Password too short (min 4)'); return; }
+  
+  const users = JSON.parse(localStorage.getItem('sb_users') || '{}');
+  if (users[u]) { showError('regError', 'Username already taken'); return; }
+  
+  users[u] = btoa(p);
+  localStorage.setItem('sb_users', JSON.stringify(users));
+  currentUser = u;
+  isGuest = false;
+  localStorage.setItem('sb_user', u);
+  afterLogin();
+}
+
+function guestMode() {
+  currentUser = null;
+  isGuest = true;
+  afterLogin();
+}
+
+function afterLogin() {
+  document.getElementById('authModal').classList.add('hidden');
+  loadBoards();
+  
+  const uname = currentUser || 'Guest';
+  document.getElementById('userName').textContent = uname;
+  document.getElementById('userAvatar').textContent = uname[0].toUpperCase();
+  
+  if (boards.length > 0) {
+    currentBoardId = boards[0].id;
+    loadBoard(currentBoardId);
+  } else {
+    currentBoardId = 'board_' + Date.now();
+    boards = [{ id: currentBoardId, name: 'My Board', data: '', created: new Date().toISOString(), updated: new Date().toISOString() }];
+    saveBoards();
+    history = []; redoStack = [];
+    saveHistory();
+  }
+  
+  renderBoardsList();
+}
+
+function showUserMenu() {
+  if (!currentUser && !isGuest) return;
+  const options = currentUser 
+    ? `Sign out (${currentUser})\nBoards: ${boards.length}`
+    : 'Sign in to save boards permanently';
+  
+  if (currentUser) {
+    if (confirm(`Signed in as: ${currentUser}\nBoards saved: ${boards.length}\n\nSign out?`)) {
+      localStorage.removeItem('sb_user');
+      currentUser = null; isGuest = false; boards = [];
+      document.getElementById('authModal').classList.remove('hidden');
+    }
+  } else {
+    if (confirm('You are in Guest mode. Sign in to keep boards permanently.\n\nGo to sign in?')) {
+      document.getElementById('authModal').classList.remove('hidden');
+    }
+  }
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+// ===================== EXPORT =====================
+function downloadPNG() {
+  saveCurrentBoard();
+  const canvas = document.getElementById('mainCanvas');
+  const a = document.createElement('a');
+  const name = document.getElementById('boardName').value || 'board';
+  a.download = name + '.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+  toast('Downloaded as PNG!');
+}
+
+function confirmClear() {
+  if (confirm('Clear the entire board? This cannot be undone.')) {
+    const ctx = getCtx();
+    ctx.clearRect(0, 0, 4000, 3000);
+    saveHistory();
+    toast('Board cleared');
+  }
+}
+
+// ===================== TOAST =====================
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// Auto-save every 30s
+setInterval(() => {
+  if (currentUser || isGuest) {
+    saveCurrentBoard();
+  }
+}, 30000);
+</script>
 </body>
 </html>
