@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NoteGrid — Study Whiteboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --surface: #f8f8f8; --border: #e0e0e0;
+    --text: #1a1a1a; --text-muted: #999; --accent: #1a1a1a;
+    --toolbar-h: 52px; --panel-w: 56px;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: #fff; color: #1a1a1a; overflow: hidden; height: 100vh; width: 100vw; user-select: none; }
+
+  /* AUTH */
+  #auth-overlay { position: fixed; inset: 0; background: #fff; display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .auth-box { width: 380px; border: 1.5px solid #1a1a1a; padding: 40px; }
+  .auth-logo { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; letter-spacing: -0.5px; margin-bottom: 4px; }
+  .auth-tagline { font-family: 'DM Mono', monospace; font-size: 11px; color: #999; margin-bottom: 28px; }
+  .auth-tabs { display: flex; border-bottom: 1.5px solid #1a1a1a; margin-bottom: 24px; }
+  .auth-tab { padding: 7px 20px; font-family: 'DM Mono', monospace; font-size: 12px; cursor: pointer; border: none; background: none; color: #999; letter-spacing: 0.4px; }
+  .auth-tab.active { background: #1a1a1a; color: #fff; }
+  .auth-field { margin-bottom: 14px; }
+  .auth-field label { display: block; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase; color: #999; margin-bottom: 5px; }
+  .auth-field input { width: 100%; padding: 9px 11px; border: 1.5px solid #e0e0e0; font-family: 'DM Mono', monospace; font-size: 13px; outline: none; transition: border-color 0.2s; }
+  .auth-field input:focus { border-color: #1a1a1a; }
+  .auth-btn { width: 100%; padding: 11px; background: #1a1a1a; color: #fff; border: none; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.5px; cursor: pointer; margin-top: 6px; }
+  .auth-btn:hover { background: #333; }
+  .auth-skip { width: 100%; padding: 9px; background: none; color: #999; border: 1.5px solid #e0e0e0; font-family: 'DM Mono', monospace; font-size: 11px; cursor: pointer; margin-top: 6px; }
+  .auth-skip:hover { border-color: #1a1a1a; color: #1a1a1a; }
+  .auth-error { font-family: 'DM Mono', monospace; font-size: 11px; color: #c00; margin-top: 8px; min-height: 16px; }
+
+  /* TOPBAR */
+  #topbar { position: fixed; top: 0; left: 0; right: 0; height: var(--toolbar-h); background: #fff; border-bottom: 1.5px solid #1a1a1a; display: flex; align-items: center; padding: 0 14px; z-index: 100; gap: 10px; }
+  .logo { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; flex-shrink: 0; }
+  .sep { width: 1px; height: 22px; background: #e0e0e0; flex-shrink: 0; }
+  .board-name-input { font-family: 'DM Mono', monospace; font-size: 12px; border: none; border-bottom: 1px solid transparent; outline: none; background: transparent; color: #1a1a1a; padding: 2px 4px; min-width: 100px; max-width: 180px; transition: border-color 0.2s; }
+  .board-name-input:focus { border-bottom-color: #e0e0e0; }
+  .tbtn { display: flex; align-items: center; gap: 5px; padding: 5px 10px; background: none; border: 1.5px solid #e0e0e0; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.4px; cursor: pointer; color: #1a1a1a; white-space: nowrap; transition: border-color 0.15s; }
+  .tbtn:hover { border-color: #1a1a1a; }
+  .tbtn.pri { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .tbtn.pri:hover { background: #333; }
+  .sp { flex: 1; }
+  .zoom-d { font-family: 'DM Mono', monospace; font-size: 10px; color: #999; min-width: 38px; text-align: center; }
+  .user-b { font-family: 'DM Mono', monospace; font-size: 10px; color: #999; }
+
+  /* LEFT TOOLBAR */
+  #toolbar { position: fixed; left: 0; top: var(--toolbar-h); bottom: 0; width: var(--panel-w); background: #fff; border-right: 1.5px solid #1a1a1a; display: flex; flex-direction: column; align-items: center; padding: 10px 0; gap: 3px; z-index: 90; overflow-y: auto; }
+  .tool-btn { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border: 1.5px solid transparent; cursor: pointer; background: none; color: #1a1a1a; font-size: 15px; position: relative; transition: all 0.12s; flex-shrink: 0; }
+  .tool-btn:hover { border-color: #e0e0e0; background: #f8f8f8; }
+  .tool-btn.active { border-color: #1a1a1a; background: #1a1a1a; color: #fff; }
+  .tsep { width: 26px; height: 1px; background: #e0e0e0; margin: 3px 0; flex-shrink: 0; }
+  .tip { position: absolute; left: 44px; top: 50%; transform: translateY(-50%); background: #1a1a1a; color: #fff; font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 8px; pointer-events: none; white-space: nowrap; opacity: 0; transition: opacity 0.12s; z-index: 300; letter-spacing: 0.4px; }
+  .tool-btn:hover .tip { opacity: 1; }
+
+  /* COLOR PANEL */
+  #color-panel { position: fixed; left: var(--panel-w); top: var(--toolbar-h); bottom: 0; width: 46px; background: #fafafa; border-right: 1px solid #e0e0e0; display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 5px; z-index: 85; overflow-y: auto; }
+  .clabel { font-family: 'DM Mono', monospace; font-size: 8px; color: #bbb; letter-spacing: 0.5px; text-transform: uppercase; flex-shrink: 0; }
+  .swatch { width: 22px; height: 22px; cursor: pointer; border: 1.5px solid transparent; transition: transform 0.1s, border-color 0.1s; flex-shrink: 0; }
+  .swatch:hover { transform: scale(1.15); }
+  .swatch.active { border-color: #1a1a1a; transform: scale(1.1); }
+  .custom-c { width: 22px; height: 22px; border: 1.5px dashed #ccc; background: none; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; color: #bbb; flex-shrink: 0; }
+  .custom-c:hover { border-color: #1a1a1a; color: #1a1a1a; }
+  #custom-ci { display: none; }
+
+  /* SIZE PANEL */
+  #size-panel { position: fixed; left: calc(var(--panel-w) + 46px); top: var(--toolbar-h); width: 38px; background: #fafafa; border-right: 1px solid #e0e0e0; display: flex; flex-direction: column; align-items: center; padding: 10px 4px; z-index: 84; bottom: 0; }
+  .vslider { -webkit-appearance: none; appearance: none; writing-mode: vertical-lr; direction: rtl; width: 3px; flex: 1; background: #1a1a1a; outline: none; cursor: pointer; max-height: 140px; }
+  .vslider::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; background: #fff; border: 2px solid #1a1a1a; cursor: pointer; }
+  .vlabel { font-family: 'DM Mono', monospace; font-size: 8px; color: #bbb; letter-spacing: 0.5px; text-transform: uppercase; }
+  .vval { font-family: 'DM Mono', monospace; font-size: 9px; color: #1a1a1a; }
+
+  /* CANVAS */
+  #cc { position: fixed; top: var(--toolbar-h); left: calc(var(--panel-w) + 46px + 38px); right: 0; bottom: 0; overflow: hidden; background: #fff; }
+  #grid-bg { position: absolute; inset: 0; pointer-events: none; }
+  #wb { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+  #prev { position: absolute; top: 0; left: 0; transform-origin: 0 0; pointer-events: none; display: none; }
+  #text-ov { position: absolute; display: none; z-index: 10; }
+  #text-ta { border: 1.5px dashed #888; background: rgba(255,255,255,0.92); outline: none; resize: none; font-family: 'DM Mono', monospace; font-size: 16px; padding: 4px 8px; min-width: 100px; min-height: 36px; color: #1a1a1a; }
+
+  /* BOARDS PANEL */
+  #boards-panel { position: fixed; right: 0; top: var(--toolbar-h); bottom: 0; width: 220px; background: #fff; border-left: 1.5px solid #1a1a1a; display: flex; flex-direction: column; z-index: 90; transform: translateX(100%); transition: transform 0.22s; }
+  #boards-panel.open { transform: translateX(0); }
+  .bh { padding: 14px; border-bottom: 1px solid #e0e0e0; font-family: 'DM Mono', monospace; font-size: 11px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .blist { flex: 1; overflow-y: auto; padding: 6px; }
+  .bitem { padding: 9px 10px; border: 1.5px solid transparent; cursor: pointer; display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
+  .bitem:hover { border-color: #e0e0e0; }
+  .bitem.active { border-color: #1a1a1a; }
+  .biname { font-family: 'DM Mono', monospace; font-size: 11px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bidate { font-family: 'DM Mono', monospace; font-size: 9px; color: #bbb; display: block; }
+  .bidel { background: none; border: none; cursor: pointer; color: #ccc; padding: 2px 4px; font-size: 12px; margin-left: 6px; flex-shrink: 0; }
+  .bidel:hover { color: #c00; }
+  .nbtn { margin: 10px; padding: 9px; background: none; border: 1.5px dashed #e0e0e0; font-family: 'DM Mono', monospace; font-size: 11px; cursor: pointer; color: #999; letter-spacing: 0.4px; }
+  .nbtn:hover { border-color: #1a1a1a; color: #1a1a1a; }
+
+  /* SHORTCUTS MODAL */
+  #sk-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; z-index: 800; }
+  #sk-modal.open { display: flex; }
+  .sk-box { background: #fff; border: 1.5px solid #1a1a1a; width: 400px; max-height: 80vh; overflow-y: auto; padding: 30px; }
+  .sk-title { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; margin-bottom: 20px; }
+  .sk-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #f0f0f0; font-family: 'DM Mono', monospace; font-size: 11px; }
+  .sk-k { background: #f5f5f5; border: 1px solid #e0e0e0; padding: 2px 7px; font-size: 10px; color: #666; }
+
+  /* NOTIF */
+  #notif { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%) translateY(60px); background: #1a1a1a; color: #fff; font-family: 'DM Mono', monospace; font-size: 11px; padding: 7px 18px; z-index: 500; transition: transform 0.25s; pointer-events: none; letter-spacing: 0.4px; }
+  #notif.show { transform: translateX(-50%) translateY(0); }
+
+  /* Fill toggle */
+  .fill-toggle { display: flex; gap: 2px; margin: 3px 0; }
+  .ft-btn { flex: 1; padding: 3px; border: 1px solid #e0e0e0; font-family: 'DM Mono', monospace; font-size: 8px; cursor: pointer; background: none; color: #999; letter-spacing: 0.3px; transition: all 0.12s; }
+  .ft-btn.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+</style>
+</head>
+<body>
+
+<!-- AUTH OVERLAY -->
+<div id="auth-overlay">
+  <div class="auth-box">
+    <div class="auth-logo">NoteGrid</div>
+    <div class="auth-tagline">// free study whiteboard, forever</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login',this)">Login</button>
+      <button class="auth-tab" onclick="switchTab('register',this)">Register</button>
+    </div>
+    <div id="lf">
+      <div class="auth-field"><label>Username</label><input id="lu" type="text" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div class="auth-field"><label>Password</label><input id="lp" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="auth-btn" onclick="doLogin()">Sign In</button>
+      <button class="auth-skip" onclick="skipAuth()">Continue without account</button>
+    </div>
+    <div id="rf" style="display:none">
+      <div class="auth-field"><label>Username</label><input id="ru" type="text" autocomplete="username" onkeydown="if(event.key==='Enter')doRegister()"></div>
+      <div class="auth-field"><label>Password</label><input id="rp" type="password" autocomplete="new-password"></div>
+      <div class="auth-field"><label>Confirm</label><input id="rp2" type="password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()"></div>
+      <button class="auth-btn" onclick="doRegister()">Create Account</button>
+      <button class="auth-skip" onclick="skipAuth()">Continue without account</button>
+    </div>
+    <div class="auth-error" id="aerr"></div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div class="logo">NoteGrid</div>
+  <div class="sep"></div>
+  <input class="board-name-input" id="board-name" value="Untitled Board">
+  <div class="sep"></div>
+  <button class="tbtn" onclick="newBoard()">＋ New</button>
+  <button class="tbtn pri" onclick="saveBoard()">Save</button>
+  <button class="tbtn" onclick="exportPNG()">Export</button>
+  <button class="tbtn" onclick="clearBoard()">Clear</button>
+  <div class="sep"></div>
+  <!-- Fill mode for shapes -->
+  <div class="fill-toggle">
+    <button class="ft-btn active" id="ft-stroke" onclick="setFillMode('stroke',this)">Outline</button>
+    <button class="ft-btn" id="ft-fill" onclick="setFillMode('fill',this)">Fill</button>
+    <button class="ft-btn" id="ft-both" onclick="setFillMode('both',this)">Both</button>
+  </div>
+  <div class="sp"></div>
+  <button class="tbtn" onclick="zoomOut()">−</button>
+  <span class="zoom-d" id="zd">100%</span>
+  <button class="tbtn" onclick="zoomIn()">＋</button>
+  <button class="tbtn" onclick="resetZoom()">Reset</button>
+  <div class="sep"></div>
+  <button class="tbtn" onclick="toggleBoards()" id="btog">Boards ▸</button>
+  <div class="sep"></div>
+  <button class="tbtn" onclick="document.getElementById('sk-modal').classList.toggle('open')">?</button>
+  <div class="sep"></div>
+  <span class="user-b" id="ubadge">guest</span>
+  <button class="tbtn" id="lout" onclick="doLogout()" style="display:none">Logout</button>
+</div>
+
+<!-- LEFT TOOLBAR -->
+<div id="toolbar">
+  <button class="tool-btn active" id="t-pen" onclick="setTool('pen')">✏️<span class="tip">Pen [P]</span></button>
+  <button class="tool-btn" id="t-highlighter" onclick="setTool('highlighter')" style="font-size:13px">▐<span class="tip">Highlighter [H]</span></button>
+  <button class="tool-btn" id="t-eraser" onclick="setTool('eraser')">⬜<span class="tip">Eraser [E]</span></button>
+  <div class="tsep"></div>
+  <button class="tool-btn" id="t-line" onclick="setTool('line')" style="font-size:13px">╱<span class="tip">Line [L]</span></button>
+  <button class="tool-btn" id="t-rect" onclick="setTool('rect')" style="font-size:13px">□<span class="tip">Rectangle [R]</span></button>
+  <button class="tool-btn" id="t-circle" onclick="setTool('circle')" style="font-size:13px">○<span class="tip">Circle [C]</span></button>
+  <button class="tool-btn" id="t-arrow" onclick="setTool('arrow')" style="font-size:13px">→<span class="tip">Arrow [A]</span></button>
+  <button class="tool-btn" id="t-triangle" onclick="setTool('triangle')" style="font-size:12px">△<span class="tip">Triangle [G]</span></button>
+  <div class="tsep"></div>
+  <button class="tool-btn" id="t-text" onclick="setTool('text')" style="font-size:14px;font-family:'DM Mono',monospace">T<span class="tip">Text [T]</span></button>
+  <button class="tool-btn" id="t-sticky" onclick="addSticky()" style="font-size:13px">☐<span class="tip">Sticky Note [N]</span></button>
+  <div class="tsep"></div>
+  <button class="tool-btn" id="t-pan" onclick="setTool('pan')" style="font-size:14px">✋<span class="tip">Pan [Space]</span></button>
+  <div class="tsep"></div>
+  <button class="tool-btn" onclick="undo()" style="font-size:14px">↩<span class="tip">Undo [Ctrl+Z]</span></button>
+  <button class="tool-btn" onclick="redo()" style="font-size:14px">↪<span class="tip">Redo [Ctrl+Y]</span></button>
+</div>
+
+<!-- COLOR PANEL -->
+<div id="color-panel">
+  <div class="clabel">CLR</div>
+  <input type="color" id="custom-ci" onchange="pickColor(this.value)">
+  <button class="custom-c" onclick="document.getElementById('custom-ci').click()" title="Custom color">+</button>
+</div>
+
+<!-- SIZE PANEL -->
+<div id="size-panel">
+  <div class="vlabel">SZ</div>
+  <input type="range" class="vslider" id="size-sl" min="1" max="60" value="4" oninput="setBrushSize(this.value)">
+  <div class="vval" id="szv">4px</div>
+  <div style="height:14px"></div>
+  <div class="vlabel">OP</div>
+  <input type="range" class="vslider" id="op-sl" min="5" max="100" value="100" oninput="setOpacity(this.value)" style="background:linear-gradient(to top,rgba(26,26,26,0.05),rgba(26,26,26,1))">
+  <div class="vval" id="opv">100%</div>
+</div>
+
+<!-- CANVAS CONTAINER -->
+<div id="cc">
+  <canvas id="grid-bg"></canvas>
+  <canvas id="wb"></canvas>
+  <canvas id="prev"></canvas>
+  <div id="text-ov"><textarea id="text-ta" rows="3" placeholder="Type... (Enter to commit, Esc to cancel)"></textarea></div>
+</div>
+
+<!-- BOARDS PANEL -->
+<div id="boards-panel">
+  <div class="bh">
+    <span>MY BOARDS</span>
+    <button class="tool-btn" style="width:22px;height:22px;font-size:13px" onclick="toggleBoards()">✕</button>
+  </div>
+  <div class="blist" id="blist"></div>
+  <button class="nbtn" onclick="newBoard()">+ New Board</button>
+</div>
+
+<!-- SHORTCUTS MODAL -->
+<div id="sk-modal">
+  <div class="sk-box">
+    <div class="sk-title">Keyboard Shortcuts</div>
+    <div class="sk-row"><span>Pen</span><span class="sk-k">P</span></div>
+    <div class="sk-row"><span>Highlighter</span><span class="sk-k">H</span></div>
+    <div class="sk-row"><span>Eraser</span><span class="sk-k">E</span></div>
+    <div class="sk-row"><span>Line</span><span class="sk-k">L</span></div>
+    <div class="sk-row"><span>Rectangle</span><span class="sk-k">R</span></div>
+    <div class="sk-row"><span>Circle</span><span class="sk-k">C</span></div>
+    <div class="sk-row"><span>Arrow</span><span class="sk-k">A</span></div>
+    <div class="sk-row"><span>Triangle</span><span class="sk-k">G</span></div>
+    <div class="sk-row"><span>Text</span><span class="sk-k">T</span></div>
+    <div class="sk-row"><span>Sticky Note</span><span class="sk-k">N</span></div>
+    <div class="sk-row"><span>Pan</span><span class="sk-k">Space (hold)</span></div>
+    <div class="sk-row"><span>Undo</span><span class="sk-k">Ctrl+Z</span></div>
+    <div class="sk-row"><span>Redo</span><span class="sk-k">Ctrl+Y / Ctrl+Shift+Z</span></div>
+    <div class="sk-row"><span>Zoom In / Out</span><span class="sk-k">Ctrl+= / Ctrl+-</span></div>
+    <div class="sk-row"><span>Zoom via scroll</span><span class="sk-k">Ctrl + Scroll</span></div>
+    <div class="sk-row"><span>Reset Zoom</span><span class="sk-k">Ctrl+0</span></div>
+    <div class="sk-row"><span>Save</span><span class="sk-k">Ctrl+S</span></div>
+    <div class="sk-row"><span>New Board</span><span class="sk-k">Ctrl+N</span></div>
+    <div class="sk-row"><span>Clear Board</span><span class="sk-k">Ctrl+Shift+X</span></div>
+    <div class="sk-row"><span>Close / Cancel</span><span class="sk-k">Esc</span></div>
+    <br>
+    <button class="auth-btn" onclick="document.getElementById('sk-modal').classList.remove('open')">Close</button>
+  </div>
+</div>
+
+<div id="notif"></div>
+
+<script>
+// ============================================================
+// CONSTANTS & STATE
+// ============================================================
+const CANVAS_W = 5000, CANVAS_H = 4000, GRID = 30;
+
+let CU = null; // current user
+let boardId = null;
+let tool = 'pen', color = '#1a1a1a', brushSize = 4, opacity = 1.0;
+let zoom = 1, panX = 0, panY = 0;
+let panning = false, spaceDown = false, lastPX, lastPY;
+let drawing = false, lx, ly;
+let shapeStart = null;
+let fillMode = 'stroke'; // stroke | fill | both
+let undoStack = [], redoStack = [];
+const MAX_U = 50;
+
+// Palette
+const PALETTE = [
+  '#1a1a1a','#ffffff','#555555','#aaaaaa',
+  '#c00000','#e05c00','#cc8800','#228b22',
+  '#006699','#4b0082','#cc44aa','#8b4513',
+  '#ffe066','#b4f0a0','#a0d8f0','#f0a0c8',
+  '#ffd0a0','#d0b4ff','#ff6b6b','#4ecdc4'
+];
+
+// Canvas refs
+const cc = document.getElementById('cc');
+const wb = document.getElementById('wb');
+const ctx = wb.getContext('2d');
+const pv = document.getElementById('prev');
+const pvCtx = pv.getContext('2d');
+const gb = document.getElementById('grid-bg');
+const gbCtx = gb.getContext('2d');
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  wb.width = CANVAS_W; wb.height = CANVAS_H;
+  pv.width = 100; pv.height = 100; // will resize dynamically
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  buildPalette();
+  onResize();
+  window.addEventListener('resize', onResize);
+  setupEvents();
+  setupKeys();
+  setupText();
+  autoLogin();
+}
+
+function onResize() {
+  gb.width = cc.offsetWidth; gb.height = cc.offsetHeight;
+  pv.width = cc.offsetWidth; pv.height = cc.offsetHeight;
+  drawGrid(); updateTransform();
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+function getUsers() { return JSON.parse(localStorage.getItem('ng_users')||'{}'); }
+function saveUsers(u) { localStorage.setItem('ng_users', JSON.stringify(u)); }
+
+function autoLogin() {
+  const s = localStorage.getItem('ng_session');
+  if (s) {
+    try { CU = JSON.parse(s).u; showApp(CU); } catch(e) { showAuthOverlay(); }
+  } else { showAuthOverlay(); }
+}
+
+function showAuthOverlay() {
+  document.getElementById('auth-overlay').style.display = 'flex';
+}
+
+function showApp(username) {
+  document.getElementById('auth-overlay').style.display = 'none';
+  document.getElementById('ubadge').textContent = username || 'guest';
+  document.getElementById('lout').style.display = username ? '' : 'none';
+  loadSession();
+  renderBoards();
+}
+
+function switchTab(tab, btn) {
+  document.querySelectorAll('.auth-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('lf').style.display = tab==='login'?'':'none';
+  document.getElementById('rf').style.display = tab==='register'?'':'none';
+  document.getElementById('aerr').textContent='';
+}
+
+function doLogin() {
+  const u=document.getElementById('lu').value.trim(), p=document.getElementById('lp').value;
+  const users=getUsers();
+  if (!users[u]||users[u].ph!==btoa(p)) { document.getElementById('aerr').textContent='Invalid username or password.'; return; }
+  CU=u; localStorage.setItem('ng_session',JSON.stringify({u})); showApp(u);
+}
+
+function doRegister() {
+  const u=document.getElementById('ru').value.trim(), p=document.getElementById('rp').value, p2=document.getElementById('rp2').value;
+  const err=document.getElementById('aerr');
+  if (!u||!p) { err.textContent='Fill all fields.'; return; }
+  if (p!==p2) { err.textContent='Passwords do not match.'; return; }
+  const users=getUsers();
+  if (users[u]) { err.textContent='Username already taken.'; return; }
+  users[u]={ph:btoa(p),boards:[]};
+  saveUsers(users);
+  CU=u; localStorage.setItem('ng_session',JSON.stringify({u})); showApp(u);
+}
+
+function skipAuth() { CU=null; showApp(null); }
+
+function doLogout() {
+  CU=null; localStorage.removeItem('ng_session');
+  document.getElementById('ubadge').textContent='guest';
+  document.getElementById('lout').style.display='none';
+  clearCanvas(); boardId=null;
+  renderBoards();
+  showAuthOverlay();
+}
+
+// ============================================================
+// BOARDS
+// ============================================================
+function getBoards() {
+  if (!CU) return JSON.parse(localStorage.getItem('ng_guest_boards')||'[]');
+  const users=getUsers(); return (users[CU]&&users[CU].boards)||[];
+}
+function saveBoards(b) {
+  if (!CU) { localStorage.setItem('ng_guest_boards',JSON.stringify(b)); return; }
+  const users=getUsers(); if(users[CU]) users[CU].boards=b; saveUsers(users);
+}
+
+function loadSession() {
+  const key = CU?`ng_last_${CU}`:'ng_last_guest';
+  const id = localStorage.getItem(key);
+  if (id) { boardId=id; loadBoard(id); } else { newBoard(false); }
+}
+
+function newBoard(notify=true) {
+  if(boardId) autoSave();
+  boardId='b_'+Date.now();
+  const boards=getBoards();
+  boards.unshift({id:boardId,name:'Untitled Board',date:today()});
+  saveBoards(boards);
+  document.getElementById('board-name').value='Untitled Board';
+  clearCanvas(); pushUndo();
+  renderBoards();
+  setLast(boardId);
+  if(notify) showNotif('New board created');
+}
+
+function switchBoard(id) { autoSave(); boardId=id; loadBoard(id); renderBoards(); setLast(id); }
+
+function loadBoard(id) {
+  const boards=getBoards(), meta=boards.find(b=>b.id===id);
+  if(meta) document.getElementById('board-name').value=meta.name;
+  const data=localStorage.getItem('ng_data_'+id);
+  if(data) {
+    const img=new Image();
+    img.onload=()=>{ ctx.fillStyle='#fff'; ctx.fillRect(0,0,CANVAS_W,CANVAS_H); ctx.drawImage(img,0,0); undoStack=[]; pushUndo(); };
+    img.src=data;
+  } else { clearCanvas(); undoStack=[]; pushUndo(); }
+}
+
+function saveBoard() {
+  const name=document.getElementById('board-name').value.trim()||'Untitled Board';
+  const boards=getBoards(); const idx=boards.findIndex(b=>b.id===boardId);
+  if(idx===-1) boards.unshift({id:boardId,name,date:today()});
+  else { boards[idx].name=name; boards[idx].date=today(); }
+  saveBoards(boards);
+  localStorage.setItem('ng_data_'+boardId, wb.toDataURL('image/png'));
+  renderBoards(); showNotif('Saved ✓');
+}
+
+function autoSave() {
+  if(!boardId) return;
+  const name=document.getElementById('board-name').value.trim()||'Untitled Board';
+  const boards=getBoards(); const idx=boards.findIndex(b=>b.id===boardId);
+  if(idx!==-1){boards[idx].name=name;boards[idx].date=today();saveBoards(boards);}
+  localStorage.setItem('ng_data_'+boardId, wb.toDataURL('image/png'));
+}
+
+function deleteBoard(id,e) {
+  e.stopPropagation();
+  let boards=getBoards(); boards=boards.filter(b=>b.id!==id);
+  saveBoards(boards); localStorage.removeItem('ng_data_'+id);
+  if(id===boardId){clearCanvas();boardId=null;newBoard(false);}
+  renderBoards(); showNotif('Board deleted');
+}
+
+function clearBoard() { if(!confirm('Clear this board?')) return; pushUndo(); clearCanvas(); showNotif('Cleared'); }
+function clearCanvas() { ctx.fillStyle='#fff'; ctx.fillRect(0,0,CANVAS_W,CANVAS_H); }
+function exportPNG() { const a=document.createElement('a'); a.download=(document.getElementById('board-name').value||'board')+'.png'; a.href=wb.toDataURL('image/png'); a.click(); showNotif('Exported PNG'); }
+
+function renderBoards() {
+  const boards=getBoards(), list=document.getElementById('blist');
+  list.innerHTML='';
+  boards.forEach(b=>{
+    const d=document.createElement('div');
+    d.className='bitem'+(b.id===boardId?' active':'');
+    d.innerHTML=`<div><div class="biname">${esc(b.name)}</div><span class="bidate">${b.date||''}</span></div><button class="bidel" onclick="deleteBoard('${b.id}',event)">✕</button>`;
+    d.onclick=(e)=>{ if(!e.target.classList.contains('bidel')) switchBoard(b.id); };
+    list.appendChild(d);
+  });
+}
+
+function toggleBoards() {
+  const p=document.getElementById('boards-panel'); p.classList.toggle('open');
+  document.getElementById('btog').textContent=p.classList.contains('open')?'Boards ✕':'Boards ▸';
+  renderBoards();
+}
+
+function setLast(id) { localStorage.setItem(CU?`ng_last_${CU}`:'ng_last_guest',id); }
+function today() { return new Date().toLocaleDateString(); }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ============================================================
+// PALETTE
+// ============================================================
+function buildPalette() {
+  const panel=document.getElementById('color-panel');
+  // Add swatches after existing static elements (label, hidden input, custom button)
+  // Remove any previously added swatches
+  document.querySelectorAll('.swatch').forEach(s=>s.remove());
+  PALETTE.forEach(c=>{
+    const sw=document.createElement('div');
+    sw.className='swatch'+(c===color?' active':'');
+    sw.style.cssText=`background:${c};${c==='#ffffff'?'border-color:#e0e0e0;':''}`;
+    sw.onclick=()=>{ color=c; document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active')); sw.classList.add('active'); };
+    panel.appendChild(sw);
+  });
+}
+
+function pickColor(c) { color=c; document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active')); }
+
+// ============================================================
+// TOOLS
+// ============================================================
+function setTool(t) {
+  tool=t;
+  document.querySelectorAll('.tool-btn[id^="t-"]').forEach(b=>b.classList.remove('active'));
+  const btn=document.getElementById('t-'+t); if(btn) btn.classList.add('active');
+  cc.style.cursor = t==='pan'?'grab' : t==='eraser'?'cell' : t==='text'?'text' : 'crosshair';
+}
+
+function setBrushSize(v) { brushSize=parseInt(v); document.getElementById('szv').textContent=v+'px'; }
+function setOpacity(v) { opacity=parseInt(v)/100; document.getElementById('opv').textContent=v+'%'; }
+function setFillMode(m,btn) {
+  fillMode=m;
+  document.querySelectorAll('.ft-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ============================================================
+// GRID
+// ============================================================
+function drawGrid() {
+  const w=gb.width, h=gb.height;
+  gbCtx.clearRect(0,0,w,h);
+  gbCtx.strokeStyle='#cce4f7'; gbCtx.lineWidth=0.7;
+  const gs=GRID*zoom;
+  const ox=(panX%gs+gs)%gs, oy=(panY%gs+gs)%gs;
+  gbCtx.beginPath();
+  for(let x=ox;x<w;x+=gs){gbCtx.moveTo(x,0);gbCtx.lineTo(x,h);}
+  for(let y=oy;y<h;y+=gs){gbCtx.moveTo(0,y);gbCtx.lineTo(w,y);}
+  gbCtx.stroke();
+}
+
+// ============================================================
+// TRANSFORM
+// ============================================================
+function updateTransform() {
+  wb.style.transform=`translate(${panX}px,${panY}px) scale(${zoom})`;
+  wb.style.transformOrigin='0 0';
+  document.getElementById('zd').textContent=Math.round(zoom*100)+'%';
+  drawGrid();
+}
+
+function toCanvas(ex,ey) {
+  const r=cc.getBoundingClientRect();
+  return {x:(ex-r.left-panX)/zoom, y:(ey-r.top-panY)/zoom};
+}
+
+function zoomAt(f,cx,cy) {
+  const nz=Math.max(0.08,Math.min(8,zoom*f));
+  const ratio=nz/zoom;
+  panX=cx-(cx-panX)*ratio; panY=cy-(cy-panY)*ratio; zoom=nz;
+  updateTransform();
+}
+function zoomIn(){zoomAt(1.2,cc.offsetWidth/2,cc.offsetHeight/2);}
+function zoomOut(){zoomAt(1/1.2,cc.offsetWidth/2,cc.offsetHeight/2);}
+function resetZoom(){zoom=1;panX=0;panY=0;updateTransform();}
+
+// ============================================================
+// EVENTS
+// ============================================================
+function setupEvents() {
+  cc.addEventListener('mousedown',mdown);
+  cc.addEventListener('mousemove',mmove);
+  cc.addEventListener('mouseup',mup);
+  cc.addEventListener('mouseleave',mup);
+  cc.addEventListener('wheel',wheel,{passive:false});
+  cc.addEventListener('touchstart',tstart,{passive:false});
+  cc.addEventListener('touchmove',tmove,{passive:false});
+  cc.addEventListener('touchend',tend);
+}
+
+function mdown(e) {
+  if(e.button!==0) return;
+  const pos=toCanvas(e.clientX,e.clientY);
+  if(spaceDown||tool==='pan'){ panning=true; lastPX=e.clientX; lastPY=e.clientY; cc.style.cursor='grabbing'; return; }
+  if(tool==='text'){ openText(pos,e.clientX,e.clientY); return; }
+  if(['line','rect','circle','arrow','triangle'].includes(tool)){
+    shapeStart=pos; drawing=true;
+    pv.style.display='block'; pv.style.transform=wb.style.transform; pv.style.transformOrigin='0 0';
+    pv.width=CANVAS_W; pv.height=CANVAS_H; return;
+  }
+  drawing=true; lx=pos.x; ly=pos.y; pushUndo();
+  ctx.save(); applyStyle();
+  ctx.beginPath(); ctx.arc(pos.x,pos.y,Math.max(0.5,tool==='highlighter'?brushSize*1.5:brushSize/2),0,Math.PI*2);
+  if(tool==='eraser'){ctx.globalCompositeOperation='destination-out';ctx.fillStyle='rgba(0,0,0,1)';}
+  ctx.fill(); ctx.restore();
+}
+
+function mmove(e) {
+  if(panning){
+    panX+=e.clientX-lastPX; panY+=e.clientY-lastPY;
+    lastPX=e.clientX; lastPY=e.clientY; updateTransform(); return;
+  }
+  if(!drawing) return;
+  const pos=toCanvas(e.clientX,e.clientY);
+  if(shapeStart){
+    pvCtx.clearRect(0,0,CANVAS_W,CANVAS_H);
+    drawShape(pvCtx,shapeStart.x,shapeStart.y,pos.x,pos.y); return;
+  }
+  ctx.save(); applyStyle();
+  ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(pos.x,pos.y); ctx.stroke();
+  ctx.restore(); lx=pos.x; ly=pos.y;
+}
+
+function mup(e) {
+  if(panning){ panning=false; cc.style.cursor=tool==='pan'?'grab':'crosshair'; return; }
+  if(shapeStart&&drawing){
+    const pos=toCanvas(e.clientX,e.clientY);
+    pushUndo(); ctx.save(); applyStyle();
+    drawShape(ctx,shapeStart.x,shapeStart.y,pos.x,pos.y); ctx.restore();
+    pvCtx.clearRect(0,0,CANVAS_W,CANVAS_H); pv.style.display='none'; shapeStart=null;
+  }
+  drawing=false;
+}
+
+function applyStyle() {
+  if(tool==='eraser'){
+    ctx.globalCompositeOperation='destination-out';
+    ctx.strokeStyle='rgba(0,0,0,1)'; ctx.fillStyle='rgba(0,0,0,1)';
+    ctx.lineWidth=brushSize*3; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.globalAlpha=1;
+  } else if(tool==='highlighter'){
+    ctx.globalCompositeOperation='source-over';
+    ctx.globalAlpha=0.32; ctx.strokeStyle=color; ctx.fillStyle=color;
+    ctx.lineWidth=brushSize*4; ctx.lineCap='square'; ctx.lineJoin='miter';
+  } else {
+    ctx.globalCompositeOperation='source-over';
+    ctx.globalAlpha=opacity; ctx.strokeStyle=color; ctx.fillStyle=color;
+    ctx.lineWidth=brushSize; ctx.lineCap='round'; ctx.lineJoin='round';
+  }
+}
+
+function drawShape(c,x1,y1,x2,y2) {
+  if(tool==='eraser'){c.globalCompositeOperation='destination-out'; c.globalAlpha=1;}
+  else{c.globalCompositeOperation='source-over'; c.globalAlpha=opacity;}
+  c.strokeStyle=color; c.fillStyle=color; c.lineWidth=brushSize; c.lineCap='round';
+  c.beginPath();
+  if(tool==='line'){c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();}
+  else if(tool==='rect'){
+    if(fillMode==='fill'||fillMode==='both'){c.rect(x1,y1,x2-x1,y2-y1);c.fill();}
+    if(fillMode==='stroke'||fillMode==='both'){c.rect(x1,y1,x2-x1,y2-y1);c.stroke();}
+  }
+  else if(tool==='circle'){
+    const rx=Math.abs(x2-x1)/2,ry=Math.abs(y2-y1)/2,cx=(x1+x2)/2,cy=(y1+y2)/2;
+    c.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
+    if(fillMode==='fill'||fillMode==='both') c.fill();
+    if(fillMode==='stroke'||fillMode==='both') c.stroke();
+  }
+  else if(tool==='triangle'){
+    const mx=(x1+x2)/2;
+    c.moveTo(mx,y1); c.lineTo(x2,y2); c.lineTo(x1,y2); c.closePath();
+    if(fillMode==='fill'||fillMode==='both') c.fill();
+    if(fillMode==='stroke'||fillMode==='both') c.stroke();
+  }
+  else if(tool==='arrow'){
+    const angle=Math.atan2(y2-y1,x2-x1), len=14+brushSize;
+    c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+    c.beginPath(); c.moveTo(x2,y2);
+    c.lineTo(x2-len*Math.cos(angle-0.4),y2-len*Math.sin(angle-0.4));
+    c.moveTo(x2,y2);
+    c.lineTo(x2-len*Math.cos(angle+0.4),y2-len*Math.sin(angle+0.4));
+    c.stroke();
+  }
+}
+
+// Touch
+let lastTD=null;
+function tstart(e){e.preventDefault(); if(e.touches.length===2){lastTD=Math.hypot(e.touches[1].clientX-e.touches[0].clientX,e.touches[1].clientY-e.touches[0].clientY);return;} mdown({button:0,clientX:e.touches[0].clientX,clientY:e.touches[0].clientY});}
+function tmove(e){e.preventDefault(); if(e.touches.length===2){const d=Math.hypot(e.touches[1].clientX-e.touches[0].clientX,e.touches[1].clientY-e.touches[0].clientY);if(lastTD){const r=cc.getBoundingClientRect();zoomAt(d/lastTD,(e.touches[0].clientX+e.touches[1].clientX)/2-r.left,(e.touches[0].clientY+e.touches[1].clientY)/2-r.top);}lastTD=d;return;} mmove({clientX:e.touches[0].clientX,clientY:e.touches[0].clientY});}
+function tend(){lastTD=null; mup({clientX:0,clientY:0});}
+
+function wheel(e){
+  e.preventDefault();
+  if(e.ctrlKey||e.metaKey){const r=cc.getBoundingClientRect(); zoomAt(e.deltaY<0?1.1:0.9,e.clientX-r.left,e.clientY-r.top);}
+  else{panX-=e.deltaX;panY-=e.deltaY;updateTransform();}
+}
+
+// ============================================================
+// TEXT TOOL
+// ============================================================
+let textPos={x:0,y:0};
+function setupText() {
+  const ta=document.getElementById('text-ta');
+  ta.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){commitText(false);e.preventDefault();}
+    else if(e.key==='Enter'&&!e.shiftKey){commitText(true);e.preventDefault();}
+  });
+  ta.addEventListener('blur',()=>setTimeout(()=>commitText(true),100));
+}
+
+function openText(pos,sx,sy) {
+  textPos=pos;
+  const ov=document.getElementById('text-ov'), ta=document.getElementById('text-ta');
+  const r=cc.getBoundingClientRect();
+  ta.value='';
+  ov.style.left=(sx-r.left)+'px'; ov.style.top=(sy-r.top)+'px'; ov.style.display='block';
+  ta.style.fontSize=Math.max(10,brushSize*3)+'px';
+  ta.style.color=color;
+  setTimeout(()=>ta.focus(),10);
+}
+
+function commitText(save) {
+  const ov=document.getElementById('text-ov'), ta=document.getElementById('text-ta');
+  if(save&&ta.value.trim()){
+    pushUndo(); ctx.save();
+    ctx.globalAlpha=opacity; ctx.fillStyle=color;
+    ctx.font=`${Math.max(10,brushSize*3)}px 'DM Mono', monospace`;
+    ctx.textBaseline='top';
+    ta.value.split('\n').forEach((line,i)=>ctx.fillText(line,textPos.x,textPos.y+i*Math.max(10,brushSize*3)*1.35));
+    ctx.restore();
+  }
+  ov.style.display='none';
+  if(ta._blurTimeout) clearTimeout(ta._blurTimeout);
+}
+
+// ============================================================
+// STICKY NOTES
+// ============================================================
+function addSticky() {
+  pushUndo();
+  const cx=(-panX+cc.offsetWidth/2)/zoom, cy=(-panY+cc.offsetHeight/2)/zoom;
+  const w=220,h=160,x=cx-w/2,y=cy-h/2;
+  const bgs=['#ffe066','#b4f0a0','#a0d8f0','#f0a0c8','#ffd0a0','#d0b4ff'];
+  const bg=bgs[Math.floor(Math.random()*bgs.length)];
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,0.13)'; ctx.shadowBlur=10; ctx.shadowOffsetX=2; ctx.shadowOffsetY=3;
+  ctx.fillStyle=bg; ctx.fillRect(x,y,w,h);
+  ctx.shadowColor='transparent';
+  ctx.fillStyle='rgba(0,0,0,0.07)'; ctx.fillRect(x,y,w,24);
+  ctx.strokeStyle='rgba(0,0,0,0.09)'; ctx.lineWidth=1;
+  for(let i=1;i<5;i++){ctx.beginPath();ctx.moveTo(x+8,y+24+i*26);ctx.lineTo(x+w-8,y+24+i*26);ctx.stroke();}
+  ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.font='600 11px DM Mono,monospace'; ctx.textBaseline='middle';
+  ctx.fillText('Note',x+8,y+12);
+  ctx.restore();
+  showNotif('Sticky note added');
+}
+
+// ============================================================
+// UNDO / REDO
+// ============================================================
+function pushUndo() {
+  undoStack.push(wb.toDataURL());
+  if(undoStack.length>MAX_U) undoStack.shift();
+  redoStack=[];
+}
+function undo() {
+  if(undoStack.length<=1) return;
+  redoStack.push(undoStack.pop());
+  restore(undoStack[undoStack.length-1]);
+}
+function redo() {
+  if(!redoStack.length) return;
+  const sn=redoStack.pop(); undoStack.push(sn); restore(sn);
+}
+function restore(dataURL) {
+  const img=new Image(); img.onload=()=>{ctx.fillStyle='#fff';ctx.fillRect(0,0,CANVAS_W,CANVAS_H);ctx.drawImage(img,0,0);}; img.src=dataURL;
+}
+
+// ============================================================
+// KEYBOARD SHORTCUTS
+// ============================================================
+function setupKeys() {
+  document.addEventListener('keydown',e=>{
+    const tag=e.target.tagName;
+    if(tag==='INPUT'||tag==='TEXTAREA'){if(e.key==='Escape') commitText(false); return;}
+    if(e.key===' '){spaceDown=true;cc.style.cursor='grab';e.preventDefault();return;}
+    if(e.key==='Escape'){document.getElementById('sk-modal').classList.remove('open');commitText(false);return;}
+    if(e.ctrlKey||e.metaKey){
+      if(e.key==='z'){e.preventDefault();undo();}
+      else if(e.key==='y'||(e.shiftKey&&e.key==='Z')){e.preventDefault();redo();}
+      else if(e.key==='s'){e.preventDefault();saveBoard();}
+      else if(e.key==='n'){e.preventDefault();newBoard();}
+      else if(e.key==='='||e.key==='+'){e.preventDefault();zoomIn();}
+      else if(e.key==='-'){e.preventDefault();zoomOut();}
+      else if(e.key==='0'){e.preventDefault();resetZoom();}
+      else if(e.shiftKey&&e.key==='X'){e.preventDefault();clearBoard();}
+      return;
+    }
+    const map={p:'pen',h:'highlighter',e:'eraser',l:'line',r:'rect',c:'circle',a:'arrow',g:'triangle',t:'text',n:'sticky',v:'pan'};
+    const k=e.key.toLowerCase(); if(map[k]){if(map[k]==='sticky')addSticky();else setTool(map[k]);}
+  });
+  document.addEventListener('keyup',e=>{
+    if(e.key===' '){spaceDown=false;cc.style.cursor=tool==='pan'?'grab':'crosshair';}
+  });
+}
+
+// ============================================================
+// NOTIFICATION
+// ============================================================
+function showNotif(msg) {
+  const el=document.getElementById('notif');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),2200);
+}
+
+// Auto-save every 90s
+setInterval(()=>{if(boardId)autoSave();},90000);
+
+// ============================================================
+// START
+// ============================================================
+init();
+</script>
+</body>
+</html>
